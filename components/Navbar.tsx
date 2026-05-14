@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, BookOpen, Menu, X, User, LogOut } from 'lucide-react';
+import { Moon, Sun, BookOpen, Menu, X, LogOut, Users, Calendar, UserCircle } from 'lucide-react';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -19,13 +19,11 @@ export default function Navbar() {
   useEffect(() => {
     setMounted(true);
     
-    // Get current user
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       
       if (user) {
-        // Get user role from database
         const { data } = await supabase
           .from('users')
           .select('role')
@@ -37,7 +35,6 @@ export default function Navbar() {
     
     getUser();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
       if (session?.user) {
@@ -61,8 +58,11 @@ export default function Navbar() {
     router.refresh();
   };
 
-  // Don't render until mounted to avoid hydration issues
   if (!mounted) return null;
+
+  const isLoggedIn = !!user;
+  const isTutor = userRole === 'tutor';
+  const isStudent = userRole === 'student';
 
   return (
     <nav className="border-b border-neutral-200 dark:border-neutral-800 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -75,17 +75,37 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
-          <Link href="/tutors" className="text-sm font-medium hover:text-zulu-green transition-colors">
-            Find Tutors
-          </Link>
           
-          {user && userRole !== 'tutor' && (
+          {/* STUDENT LINKS */}
+          {isLoggedIn && isStudent && (
+            <>
+              <Link href="/tutors" className="text-sm font-medium hover:text-zulu-green transition-colors">
+                Find Tutors
+              </Link>
+            </>
+          )}
+          
+          {/* TUTOR LINKS */}
+          {isLoggedIn && isTutor && (
+            <>
+              <Link href="/dashboard/tutor" className="text-sm font-medium hover:text-zulu-green transition-colors">
+                My Dashboard
+              </Link>
+              <Link href="/tutors" className="text-sm font-medium hover:text-zulu-green transition-colors">
+                Browse Students
+              </Link>
+            </>
+          )}
+          
+          {/* Show "Become a Tutor" only to logged-out users */}
+          {!isLoggedIn && (
             <Link href="/signup?role=tutor" className="text-sm font-medium hover:text-zulu-green transition-colors">
               Become a Tutor
             </Link>
           )}
           
-          {!user ? (
+          {/* AUTH LINKS */}
+          {!isLoggedIn ? (
             <>
               <Link href="/login" className="text-sm font-medium hover:text-zulu-green transition-colors">
                 Login
@@ -96,35 +116,19 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              {/* Dashboard Link based on role */}
-              <Link 
-                href={userRole === 'tutor' ? '/dashboard/tutor' : '/dashboard/student'} 
-                className="text-sm font-medium hover:text-zulu-green transition-colors"
-              >
-                Dashboard
-              </Link>
-              
-              {/* Profile Link */}
-              <Link 
-                href="/profile" 
-                className="text-sm font-medium hover:text-zulu-green transition-colors"
-              >
+              <Link href="/profile" className="text-sm font-medium hover:text-zulu-green transition-colors">
                 Profile
               </Link>
-              
-              {/* User Menu */}
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                  👋 {user.email?.split('@')[0]}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </button>
-              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+              <span className="text-sm text-neutral-500">
+                👋 {user.email?.split('@')[0]}
+              </span>
             </>
           )}
           
@@ -133,7 +137,6 @@ export default function Navbar() {
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-              aria-label="Toggle Dark Mode"
             >
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
@@ -159,15 +162,49 @@ export default function Navbar() {
       {/* Mobile Menu Dropdown */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-neutral-200 dark:border-neutral-800 py-4 px-4 space-y-3">
-          <Link 
-            href="/tutors" 
-            className="block text-sm font-medium hover:text-zulu-green transition-colors"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            Find Tutors
-          </Link>
           
-          {!user ? (
+          {/* STUDENT LINKS - Mobile */}
+          {isLoggedIn && isStudent && (
+            <Link 
+              href="/tutors" 
+              className="block text-sm font-medium hover:text-zulu-green transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Find Tutors
+            </Link>
+          )}
+          
+          {/* TUTOR LINKS - Mobile */}
+          {isLoggedIn && isTutor && (
+            <>
+              <Link 
+                href="/dashboard/tutor" 
+                className="block text-sm font-medium hover:text-zulu-green transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                My Dashboard
+              </Link>
+              <Link 
+                href="/tutors" 
+                className="block text-sm font-medium hover:text-zulu-green transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Browse Students
+              </Link>
+            </>
+          )}
+          
+          {!isLoggedIn && (
+            <Link 
+              href="/signup?role=tutor" 
+              className="block text-sm font-medium hover:text-zulu-green transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Become a Tutor
+            </Link>
+          )}
+          
+          {!isLoggedIn ? (
             <>
               <Link 
                 href="/login" 
@@ -187,22 +224,12 @@ export default function Navbar() {
           ) : (
             <>
               <Link 
-                href={userRole === 'tutor' ? '/dashboard/tutor' : '/dashboard/student'} 
-                className="block text-sm font-medium hover:text-zulu-green transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Dashboard
-              </Link>
-              
-              {/* Profile Link - Mobile */}
-              <Link 
                 href="/profile" 
                 className="block text-sm font-medium hover:text-zulu-green transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Profile
               </Link>
-              
               <button
                 onClick={() => {
                   handleLogout();
