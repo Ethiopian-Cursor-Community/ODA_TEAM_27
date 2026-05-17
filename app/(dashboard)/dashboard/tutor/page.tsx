@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import {
@@ -12,8 +12,146 @@ import {
   Loader2,
   Banknote,
   CheckCircle,
+  Sparkles,
+  ExternalLink,
+  BookOpen,
 } from 'lucide-react';
-import WithdrawModal from '@/components/WithdrawModal';
+import WithdrawModal, { formatAccountType } from '@/components/WithdrawModal';
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+function AITeachingAssistant() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const historyEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    historyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+  const handleAsk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const question = input.trim();
+    if (!question || isLoading) return;
+
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: question,
+    };
+
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    setInput('');
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: nextMessages.map(({ role, content }) => ({ role, content })),
+          subject: 'Ethiopian curriculum tutoring — lesson planning and teaching strategies',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get AI response');
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.content || 'I could not generate an answer. Please try again.',
+        },
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <section className="mb-6 rounded-2xl overflow-hidden shadow-xl shadow-zulu-green/20 border border-zulu-green/30 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="bg-gradient-to-r from-zulu-green to-green-600 px-5 sm:px-6 py-5 text-white">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur shrink-0">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold">🤖 AI Teaching Assistant</h2>
+            <p className="text-sm sm:text-base text-white/90 mt-1">
+              Get help with lesson planning, explaining concepts, or answering student questions
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-neutral-900 p-4 sm:p-6">
+        <form onSubmit={handleAsk} className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask AI about teaching strategies, lesson plans, or subject concepts..."
+            className="flex-1 px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-950 focus:border-zulu-green focus:ring-1 focus:ring-zulu-green outline-none transition-colors"
+            disabled={isLoading}
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !input.trim()}
+            className="px-6 py-3 bg-zulu-green hover:bg-green-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-colors shrink-0"
+          >
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Ask AI'}
+          </button>
+        </form>
+
+        {error && (
+          <p className="mt-3 text-sm text-zulu-red">{error}</p>
+        )}
+
+        {(messages.length > 0 || isLoading) && (
+          <div className="mt-4 max-h-64 overflow-y-auto space-y-3 rounded-xl bg-neutral-50 dark:bg-neutral-950 p-4 border border-neutral-100 dark:border-neutral-800">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`text-sm rounded-lg px-3 py-2 ${
+                  msg.role === 'user'
+                    ? 'bg-zulu-green/10 text-neutral-800 dark:text-neutral-200 ml-4'
+                    : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 mr-4'
+                }`}
+              >
+                <span className="font-medium text-xs text-neutral-500 block mb-1">
+                  {msg.role === 'user' ? 'You' : 'AI'}
+                </span>
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex items-center gap-2 text-neutral-500 text-sm">
+                <Loader2 className="w-4 h-4 animate-spin text-zulu-green" />
+                Thinking...
+              </div>
+            )}
+            <div ref={historyEndRef} />
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 interface Booking {
   id: string;
@@ -29,6 +167,7 @@ interface Withdrawal {
   id: string;
   amount: number;
   account_number: string;
+  account_type?: string | null;
   status: string;
   created_at: string;
 }
@@ -119,6 +258,31 @@ export default function TutorDashboard() {
           </p>
         </div>
 
+        <AITeachingAssistant />
+
+        <section className="mb-8 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow animate-in fade-in slide-in-from-bottom-2 duration-300 delay-75">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-zulu-yellow/20 shrink-0">
+                <BookOpen className="w-6 h-6 text-zulu-green" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">📚 Ethiopian Curriculum Resources</h2>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                  Access grade 9-12 learning materials, definitions, and video tutorials for your students
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/learn"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-zulu-green text-white rounded-xl font-medium hover:bg-green-700 transition-colors shrink-0"
+            >
+              Browse Resources
+              <ExternalLink className="w-4 h-4" />
+            </Link>
+          </div>
+        </section>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Students Taught', value: uniqueStudents, icon: Users },
@@ -163,6 +327,7 @@ export default function TutorDashboard() {
                   <tr className="border-b text-left text-neutral-500">
                     <th className="py-2 pr-4">Date</th>
                     <th className="py-2 pr-4">Amount</th>
+                    <th className="py-2 pr-4">Account Type</th>
                     <th className="py-2 pr-4">Account</th>
                     <th className="py-2">Status</th>
                   </tr>
@@ -172,6 +337,7 @@ export default function TutorDashboard() {
                     <tr key={w.id} className="border-b border-neutral-100 dark:border-neutral-800">
                       <td className="py-3 pr-4">{new Date(w.created_at).toLocaleDateString()}</td>
                       <td className="py-3 pr-4">{w.amount} ETB</td>
+                      <td className="py-3 pr-4 text-xs">{formatAccountType(w.account_type)}</td>
                       <td className="py-3 pr-4 font-mono text-xs">{w.account_number}</td>
                       <td className="py-3">
                         <span
