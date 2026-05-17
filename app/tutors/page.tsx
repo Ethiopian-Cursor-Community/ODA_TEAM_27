@@ -34,7 +34,8 @@ export default function TutorsPage() {
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('role', 'tutor');
+        .eq('role', 'tutor')
+        .eq('approval_status', 'approved');
 
       if (error) {
         console.error('Error fetching tutors:', error);
@@ -108,7 +109,7 @@ export default function TutorsPage() {
             </div>
 
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-xl border">
-              <h3 className="font-semibold mb-3">Max Hourly Rate: ${maxPrice}</h3>
+              <h3 className="font-semibold mb-3">Max Hourly Rate: {maxPrice} ETB</h3>
               <input
                 type="range"
                 min="0"

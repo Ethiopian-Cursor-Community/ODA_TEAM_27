@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "vercel-build": "npm install --legacy-peer-deps && npm run build"
+    "vercel-build": "npm install --legacy-peer-deps && npm run build",
+    "generate-definitions": "node scripts/generate-topic-definitions.js"
   },
   "dependencies": {
   "@ai-sdk/groq": "^3.0.39",

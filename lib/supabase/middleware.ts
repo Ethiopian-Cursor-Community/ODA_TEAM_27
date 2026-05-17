@@ -2,9 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,10 +13,8 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -31,20 +27,43 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Basic route protection
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  const path = request.nextUrl.pathname;
+
+  const protectedPrefixes = ['/dashboard', '/admin', '/learn', '/tutors', '/profile', '/messages', '/video-chat'];
+  const isProtected = protectedPrefixes.some((p) => path.startsWith(p));
+
+  if (!user && isProtected && !path.startsWith('/login') && !path.startsWith('/signup')) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
+    url.searchParams.set('redirect', path);
     return NextResponse.redirect(url);
   }
 
-  // If user is logged in, restrict access to auth pages
-  if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup'))) {
+  if (user && (path.startsWith('/login') || path.startsWith('/signup'))) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
     const url = request.nextUrl.clone();
-    // Redirect to appropriate dashboard based on user role would go here, 
-    // for now we just send to student dashboard as default
-    url.pathname = '/dashboard/student';
+    if (profile?.role === 'admin') url.pathname = '/admin';
+    else if (profile?.role === 'tutor') url.pathname = '/dashboard/tutor';
+    else url.pathname = '/dashboard/student';
     return NextResponse.redirect(url);
+  }
+
+  if (user && path.startsWith('/admin')) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    if (profile?.role !== 'admin') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

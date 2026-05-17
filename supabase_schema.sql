@@ -1,4 +1,5 @@
--- Run this in your Supabase SQL Editor
+-- Run this in your Supabase SQL Editor (initial setup)
+-- Then run supabase/migrations/002_platform_features.sql for wallet, admin, commissions
 
 -- 1. Create the users table
 CREATE TABLE public.users (

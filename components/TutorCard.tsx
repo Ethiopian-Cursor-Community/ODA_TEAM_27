@@ -34,7 +34,7 @@ export default function TutorCard({ id, name, subject, rating, hourlyRate, langu
         
         {/* Rate and Languages */}
         <div className="mb-3">
-          <p className="text-2xl font-bold text-zulu-green">${hourlyRate}<span className="text-sm text-neutral-500">/hour</span></p>
+          <p className="text-2xl font-bold text-zulu-green">{hourlyRate}<span className="text-sm text-neutral-500"> ETB/hr</span></p>
         </div>
         
         <div className="flex flex-wrap gap-2 mb-4">

@@ -51,6 +51,8 @@ export default function SignupPage() {
       email: authData.user.email,
       full_name: fullName,
       role: role,
+      balance: role === 'student' ? 0 : undefined,
+      approval_status: role === 'tutor' ? 'pending' : 'approved',
     });
 
     if (dbError) {
